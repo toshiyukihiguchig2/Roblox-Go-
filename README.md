@@ -92,8 +92,8 @@ VSCode 側で rojo serve が動いている状態で、Studio の Rojo ボタン
 </pre>
 6. Rojo 接続後の開発フロー
 - Rojo を使う場合、Roblox Studio 側でスクリプトを作らないのが基本になる。
-開発フロー：
 <pre>
+開発フロー：
 - VSCode の src/ に Lua ファイルを作る
 - Rojo が自動で Studio に同期する
 - Studio 側では動作確認だけ行う
