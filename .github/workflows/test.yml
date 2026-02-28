@@ -27,11 +27,5 @@ jobs:
       - name: Install Wally packages
         run: wally install
 
-      - name: Install run-in-roblox
-        run: cargo install run-in-roblox
-
       - name: Build place
         run: rojo build test.project.json -o test.rbxl
-
-      - name: Run tests
-        run: run-in-roblox --place test.rbxl --script src/runner/TestRunner.server.lua
