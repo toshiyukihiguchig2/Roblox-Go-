@@ -32,6 +32,19 @@ rojo serve
 （1～3を繰り返し）
 4. GitHub に push → CI が自動テスト（結果をGithubのアクションで確認）
 </pre>
+- 資材の配置イメージ
+<pre>
+src/
+  server/
+    AAA.server.lua
+  shared/
+    BBB.lua
+  runner/
+    TestRunner.server.lua
+  tests/
+    AAA.spec.lua
+    BBB.spec.lua
+</pre>
 
 ### 開発環境（Rojo / VSCode / TestEZ など）
 - Roblox Studio
@@ -171,11 +184,20 @@ TestEZ = "roblox/testez@0.4.1"
         "$className": "DataModel",
         "ReplicatedStorage": {
             "$className": "ReplicatedStorage",
-            "Source": {
-                "$path": "src"
+            "Shared": {
+                "$path": "src/shared"
             },
             "Packages": {
                 "$path": "Packages"
+            }
+        },
+        "ServerScriptService": {
+            "$className": "ServerScriptService",
+            "Server": {
+                "$path": "src/server"
+            },
+            "TestRunner": {
+                "$path": "src/runner"
             }
         }
     }
