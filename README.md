@@ -120,9 +120,81 @@ VSCode 側で rojo serve が動いている状態で、Studio の Rojo ボタン
 </pre>
 - プロジェクトに wally.toml を作成する
 <pre>
+実行環境：VSCode
 
+1. VSCode の左側でプロジェクトルートを右クリックし「新しいファイル」を選択
+2. ファイル名「wally.toml」を入力して作成する
+3. 次の内容を貼り付ける（TestEZ 導入用）
+----
+[package]
+name = "GitHubのユーザー名/roblox-go"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]
+TestEZ = "roblox/testez@0.4.1"
+----
+※ name は GitHub のユーザー名に合わせて変更してOK
+</pre>
+- Wally を適用する
+<pre>
+　wally install　（　←　プロジェクト内に Packages/ フォルダが生成されれば OK ）
 </pre>
 8. TestEZ の実行
+- default.project.json に Packages を追加する
+<pre>
+{
+    "name": "Roblox-Go-",
+    "tree": {
+        "$className": "DataModel",
+        "ReplicatedStorage": {
+            "$className": "ReplicatedStorage",
+            "Source": {
+                "$path": "src"
+            },
+            "Packages": {
+                "$path": "Packages"
+            }
+        }
+    }
+}
+</pre>
+- TestEZ のテストコードを書く準備（テストコードが機能するかの確認）
+<pre>
+実行環境：VSCode
+
+・src/tests/ フォルダを作成する
+・src/tests/example.spec.lua を作成する
+・サンプルコードを記述し保存すると、Studio 側の ReplicatedStorage/Source/tests に同期される
+  （サンプルコード）
+  return function()
+    describe("math", function()
+        it("adds numbers", function()
+            expect(1 + 1).to.equal(2)
+        end)
+    end)
+  end
+</pre>
+- Roblox Studio で TestEZ を実行する
+<pre>
+実行環境：Roblox Studio
+
+Rojo 接続中に Studio を開くと：
+- ReplicatedStorage/Packages/TestEZ が存在する
+- ReplicatedStorage/Source/tests にテストがある
+
+この状態で、TestEZ の UI（TestEZ ランナー）を使ってテストを実行する
+※TestEZ の UI がない場合は、次のコードを Command Bar で実行
+  local TestEZ = require(game.ReplicatedStorage.Packages.TestEZ)
+  local results = TestEZ.TestBootstrap:run({game.ReplicatedStorage.Source.tests})
+  print(results)
+※上記（サンプルコード）を使っていた場合はおそらくエラーになるが、TestEZの動作確認としては問題ない
+</pre>
+9. UI（TestEZ ランナー）の作成方法
+<pre>
+
+</pre>
 <pre>
 wally install
 wally run test
