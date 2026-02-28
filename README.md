@@ -57,11 +57,6 @@ wally run test
 
 ----
 
-### LICENSE
-
-
-----
-
 ### .gitignoreについて
 Roblox のバイナリを完全に除外
 - .rbxl や .rbxm は Git に入れるとリポジトリが壊れるため。
@@ -78,3 +73,8 @@ Wally / Node などの依存ファイルを除外
 
 CI（GitHub Actions）で不要なファイルを除外
 - coverage などの一時ファイルは Git に入れない。
+
+----
+
+### LICENSE
+“This project is licensed under the MIT License.”
