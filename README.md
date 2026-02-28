@@ -271,6 +271,14 @@ rojo = { source = "rojo-rbx/rojo", version = "7.6.1" }
 ※これは GitHub Actions が TestEZ を実行するための「テスト専用の Rojo プロジェクト」
 </pre>
 3. GitHub Actions の workflow を追加
+<details>
+<summary>旧手順：問題点３つあるため改良　クリックして開く</summary>
+・Parameter token or opts.auth is required
+　→ Roblox/setup-foreman@v1 が壊れていた
+・手動インストールに変更
+　→ URLミス修正
+・PATH問題
+　→ $HOME/.foreman/bin を追加
 <pre>
 実行環境：VSCode
 
@@ -301,6 +309,45 @@ jobs:
 
       - name: Run tests
         run: rojo test test.project.json
+----
+</pre>
+</details>
+<pre>
+実行環境：VSCode
+
+github/workflows/test.yml を作成し、下記を記載する
+----
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Foreman
+        run: |
+          curl -L https://github.com/Roblox/foreman/releases/latest/download/foreman-linux-x86_64.zip -o foreman.zip
+          unzip foreman.zip
+          chmod +x foreman
+          sudo mv foreman /usr/local/bin/
+
+      - name: Install tools
+        run: foreman install
+
+      - name: Add Foreman tools to PATH
+        run: echo "$HOME/.foreman/bin" >> $GITHUB_PATH
+
+      - name: Install Wally packages
+        run: wally install
+
+      - name: Build place
+        run: rojo build test.project.json -o test.rbxl
 ----
 </pre>
 4. push すると GitHub Actions が自動で動く
