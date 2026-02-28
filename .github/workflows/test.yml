@@ -13,7 +13,8 @@ jobs:
 
       - name: Install Foreman
         run: |
-          curl -L https://github.com/Roblox/foreman/releases/latest/download/foreman-linux -o foreman
+          curl -L https://github.com/Roblox/foreman/releases/latest/download/foreman-linux-x86_64.zip -o foreman.zip
+          unzip foreman.zip
           chmod +x foreman
           sudo mv foreman /usr/local/bin/
 
