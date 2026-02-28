@@ -7,16 +7,16 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Foreman
-        uses: Roblox/setup-foreman@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Foreman manually
+        run: |
+          curl -L https://github.com/Roblox/foreman/releases/latest/download/foreman-linux.zip -o foreman.zip
+          unzip foreman.zip
+          chmod +x foreman
+          sudo mv foreman /usr/local/bin/
 
       - name: Install tools
         run: foreman install
