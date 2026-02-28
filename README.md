@@ -3,14 +3,34 @@ Robloxゲーム開発企画「Go!!!!」プロジェクト用の開発リポシ�
 
 ### プロジェクトの目的
 Roblox 上で動作するアクションゲーム「Go!!!!」の開発を行う。
-Rojo を用いたコード管理、TestEZ による自動テスト、GitHub Actions による CI を導入し、
+Rojo を用いたコード管理、TestEZ による自動テスト、GitHub Actions による ビルド を導入し、
 再現性の高い開発フローと品質管理の自動化を実現する。
 
 ### 使い方
 - VSCode + Rojo を使って Roblox Studio とコードを同期しながら開発する
 - src/ 以下に Lua コードを配置し、Rojo で game/ にマッピング
 - TestEZ を使ってユニットテストを実行
-- GitHub に push すると GitHub Actions が自動でテストを実行
+- GitHub に push すると GitHub Actions により、Rojo が正しく動作しプロジェクトをビルドできることを自動で検証する
+
+### セットアップ後の運用
+- PowerShellを起動し、cloneしたリポジトリーへ移動しVSCodeを立ち上げる
+<pre>
+cd C:\Users\toshi\source\repos\Roblox-Go-
+code .
+</pre>
+- VSCodeのコンソール（PowerShell）で Rojo を起動する
+<pre>
+rojo serve
+</pre>
+- Roblox Studio を起動し、セットアップ済みである制作中のバーチャル空間を選択する
+- Roblox Studio のプラグインからRojoを開き「Connect」を押下する
+- 開発を進める流れ
+<pre>
+1. src/ に本番コードを書く
+2. src/tests/ に対応するテストを書く
+3. Roblox Studio で Rojo で同期して動作確認
+4. GitHub に push → CI が自動テスト
+</pre>
 
 ### 開発環境（Rojo / VSCode / TestEZ など）
 - Roblox Studio
