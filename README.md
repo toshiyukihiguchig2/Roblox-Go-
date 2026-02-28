@@ -66,11 +66,15 @@ wally run test
 Roblox のバイナリを完全に除外
 - .rbxl や .rbxm は Git に入れるとリポジトリが壊れるため。
 - 差分が取れず、容量も巨大になるため 絶対に除外すべき。
+
 Rojo の出力フォルダを除外
 - Rojo の out/ や build/ は生成物なので Git に入れない。
+
 VSCode の個人設定を除外
 - .vscode/ は個人の環境依存なので、チーム開発や学校提出で問題になる。
+
 Wally / Node などの依存ファイルを除外
 - 依存関係は Git に入れず、wally install や npm install で再構築する。
+
 CI（GitHub Actions）で不要なファイルを除外
 - coverage などの一時ファイルは Git に入れない。
