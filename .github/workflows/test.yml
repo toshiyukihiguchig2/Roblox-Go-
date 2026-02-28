@@ -21,6 +21,9 @@ jobs:
       - name: Install tools
         run: foreman install
 
+      - name: Add Foreman tools to PATH
+        run: echo "$PWD/.foreman/bin" >> $GITHUB_PATH
+
       - name: Install Wally packages
         run: wally install
 
