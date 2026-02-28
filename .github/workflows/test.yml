@@ -34,4 +34,4 @@ jobs:
         run: rojo build test.project.json -o test.rbxl
 
       - name: Run tests
-        run: run-in-roblox --place test.rbxl --script testRunner.server.lua
+        run: run-in-roblox --place test.rbxl --script src/runner/TestRunner.server.lua
