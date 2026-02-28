@@ -238,6 +238,7 @@ GitHub Actions は、 GitHub のサーバー上で TestEZ を実行する。
  　・TestEZ を実行するコマンド
  これらを GitHub Actions の workflow に書くことで、push のたびに自動テストが走る
 </pre>
+前提：VSCodeでGitHub Actionsプラグインをインストール済みであること
 1. プロジェクトに foreman.toml を追加する
 <pre>
 実行環境：VSCode
@@ -270,10 +271,44 @@ rojo = { source = "rojo-rbx/rojo", version = "7.6.1" }
 </pre>
 3. GitHub Actions の workflow を追加
 <pre>
-実行環境：
+実行環境：VSCode
 
+github/workflows/test.yml を作成し、下記を記載する
+----
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Foreman
+        uses: Roblox/setup-foreman@v1
+
+      - name: Install tools
+        run: foreman install
+
+      - name: Install Wally packages
+        run: wally install
+
+      - name: Run tests
+        run: rojo test test.project.json
+----
 </pre>
-
+4. push すると GitHub Actions が自動で動く
+<pre>
+GitHub に push すると：
+- Actions タブに「Test」ジョブが走る
+- TestEZ が自動で実行される
+- 成功・失敗が GitHub 上で確認できる
+</pre>
 
 ----
 
