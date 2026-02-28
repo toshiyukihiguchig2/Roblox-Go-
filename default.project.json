@@ -1,0 +1,21 @@
+{
+    "name": "Roblox-Go-",
+    "tree": {
+        "$className": "DataModel",
+        "ReplicatedStorage": {
+            "$className": "ReplicatedStorage",
+            "Source": {
+                "$path": "src"
+            },
+            "Packages": {
+                "$path": "Packages"
+            }
+        },
+        "ServerScriptService": {
+            "$className": "ServerScriptService",
+            "TestRunner": {
+                "$path": "src/runner"
+            }
+        }
+    }
+}

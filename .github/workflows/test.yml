@@ -1,0 +1,25 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Foreman
+        uses: Roblox/setup-foreman@v1
+
+      - name: Install tools
+        run: foreman install
+
+      - name: Install Wally packages
+        run: wally install
+
+      - name: Run tests
+        run: rojo test test.project.json
