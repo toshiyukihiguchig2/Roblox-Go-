@@ -26,15 +26,32 @@ Rojo を用いたコード管理、TestEZ による自動テスト、GitHub Acti
 ### セットアップ手順
 1. リポジトリを clone
 <pre>
+実行環境：PowerShell
+
 cd C:\Users\ユーザー名\source\repos　（　←　clone先のフォルダ構成のおすすめ）
 git clone https://github.com/ユーザー名/Roblox-Go-.git
 cd Roblox-Go-
 </pre>
 2. Rojo のインストール
 <pre>
+実行環境：PowerShell
+
 cargo install rojo
+
 または
-Rojo の公式リリースからバイナリをダウンロード。
+
+Rojo の公式リリースからバイナリをダウンロード。　（　←　Windowsならこっちが安定）
+・Rojo の公式リリースページを開く（https://github.com/rojo-rbx/rojo/releases）
+・最新版の Assets を開く
+  例）rojo-7.7.0-rc.1-windows-x86_64.zip
+・zip をダウンロードして解凍
+・中にある rojo.exe を「C:\Users\ユーザー名\AppData\Local\Programs\Rojo」のようなフォルダに置く（　←　フォルダは自分で作って OK）
+・そのフォルダを PATH に追加
+　・Windowsキー →「環境変数」→「環境変数の編集」
+　・「Path」を選択 →「編集」
+　・C:\Users\ユーザー名\AppData\Local\Programs\Rojo を追加
+・PowerShellを別窓で開いて下記コマンドを実行
+  rojo --version　（　←　バージョンが表示されれば OK）
 </pre>
 3. VSCode のセットアップ
 - Rojo 拡張機能をインストール
