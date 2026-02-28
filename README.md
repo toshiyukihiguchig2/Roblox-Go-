@@ -29,7 +29,7 @@ rojo serve
 1. src/ に本番コードを書く
 2. src/tests/ に対応するテストを書く
 3. Roblox Studio で Rojo で同期して動作確認
-4. GitHub に push → CI が自動テスト
+4. GitHub に push → CI が自動テスト（結果をGithubのアクションで確認）
 </pre>
 
 ### 開発環境（Rojo / VSCode / TestEZ など）
