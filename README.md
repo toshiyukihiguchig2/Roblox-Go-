@@ -228,7 +228,8 @@ print("===== TestEZ Finished =====")
 「プレイ」を押下する。（または「F5」キー）
 「出力」にテスト実行結果を表示する
 </pre>
-10. GitHub Actions の自動テスト（CI）を設定
+
+### GitHub Actions の自動テスト（CI）を設定
 - 全体像：GitHub Actions で TestEZ を動かす仕組み
 <pre>
 GitHub Actions は、 GitHub のサーバー上で TestEZ を実行する。
