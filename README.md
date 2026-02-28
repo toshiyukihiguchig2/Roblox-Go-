@@ -101,7 +101,28 @@ VSCode 側で rojo serve が動いている状態で、Studio の Rojo ボタン
 - GitHub に push してバージョン管理する
 　※Studio 側でスクリプトを直接編集すると、Rojo の同期で上書きされてしまうため、VSCode 側が唯一の編集場所になる。
 </pre>
-7. TestEZ の実行
+7. TestEZ の構築
+- Wally で TestEZ を導入する
+<pre>
+実行環境：PowerShell または VSCode のターミナル
+
+1. Wally をインストールする（ブラウザで直接ダウンロードする方法　おすすめ）
+　・URL をブラウザで開く（https://github.com/UpliftGames/wally/releases/latest）
+  ・ページ内の Assets にある「wally-windows.exe」をクリック 
+　・zip をダウンロードして解凍
+　・中にある wally.exe を「C:\Users\ユーザー名\AppData\Local\Programs\Wally」のようなフォルダに置く（　←　フォルダは自分で作って OK）
+2. wally.exe を PATH へ通す
+　・Windowsキー →「環境変数」→「環境変数の編集」
+　・「Path」を選択 →「編集」
+　・C:\Users\ユーザー名\AppData\Local\Programs\Wally を追加
+3. PowerShellを開き疎通を確認する
+  wally --version
+</pre>
+- プロジェクトに wally.toml を作成する
+<pre>
+
+</pre>
+8. TestEZ の実行
 <pre>
 wally install
 wally run test
