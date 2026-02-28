@@ -193,7 +193,41 @@ Rojo 接続中に Studio を開くと：
 </pre>
 9. UI（TestEZ ランナー）の作成方法
 <pre>
-
+① VSCode の src/ に runner フォルダを作る
+src/
+ ├ tests/
+ └ runner/
+② src/runner/TestRunner.server.lua を作成
+local TestEZ = require(game.ReplicatedStorage.Packages.TestEZ)
+local results = TestEZ.TestBootstrap:run({
+    game.ReplicatedStorage.Source.tests
+}, TestEZ.Reporters.TextReporter)
+print("===== TestEZ Finished =====")
+③ Rojo の project.json に runner を追加
+{
+    "name": "Roblox-Go-",
+    "tree": {
+        "$className": "DataModel",
+        "ReplicatedStorage": {
+            "$className": "ReplicatedStorage",
+            "Source": {
+                "$path": "src"
+            },
+            "Packages": {
+                "$path": "Packages"
+            }
+        },
+        "ServerScriptService": {
+            "$className": "ServerScriptService",
+            "TestRunner": {
+                "$path": "src/runner"
+            }
+        }
+    }
+}
+④ Studio で TestEZ UI を確認
+「プレイ」を押下する。（または「F5」キー）
+「出力」にテスト実行結果を表示する
 </pre>
 <pre>
 wally install
