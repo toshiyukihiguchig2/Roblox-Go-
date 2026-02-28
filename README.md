@@ -189,7 +189,6 @@ Rojo 接続中に Studio を開くと：
   local TestEZ = require(game.ReplicatedStorage.Packages.TestEZ)
   local results = TestEZ.TestBootstrap:run({game.ReplicatedStorage.Source.tests})
   print(results)
-※上記（サンプルコード）を使っていた場合はおそらくエラーになるが、TestEZの動作確認としては問題ない
 </pre>
 9. UI（TestEZ ランナー）の作成方法
 <pre>
@@ -229,17 +228,52 @@ print("===== TestEZ Finished =====")
 「プレイ」を押下する。（または「F5」キー）
 「出力」にテスト実行結果を表示する
 </pre>
+10. GitHub Actions の自動テスト（CI）を設定
+- 全体像：GitHub Actions で TestEZ を動かす仕組み
 <pre>
-wally install
-wally run test
+GitHub Actions は、 GitHub のサーバー上で TestEZ を実行する。
+必要な構成は次の 3 つ。
+　・Foreman（Roblox CLI のパッケージ管理）
+ 　・Wally（依存パッケージ管理）
+ 　・TestEZ を実行するコマンド
+ これらを GitHub Actions の workflow に書くことで、push のたびに自動テストが走る
+</pre>
+1. プロジェクトに foreman.toml を追加する
+<pre>
+実行環境：VSCode
+
+・VSCode のプロジェクトルートに foreman.toml を作成し、以下を記載する
+----
+[tools]
+wally = { source = "UpliftGames/wally", version = "0.3.2" }
+rojo = { source = "rojo-rbx/rojo", version = "7.6.1" }
+----
+※versionはwally、Rojoそれぞれのインストール時のversionを設定する
+　分からない場合は PowerShell または VSCode のターミナルでコマンド確認する
+  wally --version
+  rojo --version 
+</pre>
+2. TestEZ を CLI で実行するためのスクリプトを追加する
+<pre>
+実行環境：VSCode
+
+・VSCode のプロジェクトルートに test.project.json を作し、以下を記載する
+----
+{
+    "name": "tests",
+    "tree": {
+        "$path": "src/tests"
+    }
+}
+----
+※これは GitHub Actions が TestEZ を実行するための「テスト専用の Rojo プロジェクト」
+</pre>
+3. GitHub Actions の workflow を追加
+<pre>
+実行環境：
+
 </pre>
 
-### 注意点
-- .rbxl や .rbxm などのバイナリファイルは Git に含めない
-- src/ 以下のコードが開発の中心
-- Rojo のマッピング設定（default.project.json）を変更した場合は共有必須
-- GitHub Actions の設定ファイル（.github/workflows/）は削除しない
-- テストコードは tests/ に配置する
 
 ----
 
@@ -259,6 +293,13 @@ Wally / Node などの依存ファイルを除外
 
 CI（GitHub Actions）で不要なファイルを除外
 - coverage などの一時ファイルは Git に入れない。
+
+### 注意点
+- .rbxl や .rbxm などのバイナリファイルは Git に含めない
+- src/ 以下のコードが開発の中心
+- Rojo のマッピング設定（default.project.json）を変更した場合は共有必須
+- GitHub Actions の設定ファイル（.github/workflows/）は削除しない
+- テストコードは tests/ に配置する
 
 ----
 
