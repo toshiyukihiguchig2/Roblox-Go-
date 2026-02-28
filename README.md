@@ -54,13 +54,43 @@ Rojo の公式リリースからバイナリをダウンロード。　（　←
   rojo --version　（　←　バージョンが表示されれば OK）
 </pre>
 3. VSCode のセットアップ
+- VSCodeの起動について
+<pre>
+実行環境：PowerShell
+
+cd C:\Users\ユーザー名\source\repos
+</pre>
 - Rojo 拡張機能をインストール
 - Luau Language Server をインストール
 4. Rojo プロジェクトを起動
 <pre>
-rojo serve
+実行環境：VSCode（ターミナル）
+
+・下記コマンドを実行して Rojo を起動する
+　rojo serve　（　←　「Rojo server listening on port 34872」こんな感じのがでれば OK）
 </pre>
-5. TestEZ の実行
+5. Roblox Studio で Rojo プラグインに接続
+- Roblox Studio に Rojo プラグインをインストールする手順
+<pre>
+・Roblox Studio を開く
+・上部メニューの Plugins（プラグイン） をクリック
+・Manage Plugins（プラグイン管理） を開く
+・右上の 「Find Plugins（プラグインを探す）」または「＋」をクリック
+・ツールボックスの検索欄に Rojo と入力
+・Rojo（公式） を選んで「Install（インストール）」
+・インストール後、Studio の中央の Plugins（プラグイン）をクリック
+・ほかのプラグインと並んで Rojo ボタンが表示される
+</pre>
+- Rojo プラグインの動作確認
+<pre>
+VSCode 側で rojo serve が動いている状態で、Studio の Rojo ボタンを押すと：
+・Rojo の窓が開き
+・ポート番号 34872 が表示される（自動）
+・Connectをクリック　（　←　VSCode の src/ が Studio の ReplicatedStorage/Source に同期される。）
+  ※ Roblox Studio のRojoプラグインと VSCode で参照している Rojo CI のバージョンが一致しないと接続できない。
+  　その場合は、どちらかのバージョンをアップグレードもしくはダウングレードする必要あり。
+</pre>
+6. TestEZ の実行
 <pre>
 wally install
 wally run test
