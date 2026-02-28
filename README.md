@@ -26,6 +26,7 @@ Rojo を用いたコード管理、TestEZ による自動テスト、GitHub Acti
 ### セットアップ手順
 1. リポジトリを clone
 <pre>
+cd C:\Users\ユーザー名\source\repos　（　←　clone先のフォルダ構成のおすすめ）
 git clone https://github.com/ユーザー名/Roblox-Go-.git
 cd Roblox-Go-
 </pre>
