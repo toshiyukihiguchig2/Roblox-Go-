@@ -91,14 +91,16 @@ VSCode 側で rojo serve が動いている状態で、Studio の Rojo ボタン
   　その場合は、どちらかのバージョンをアップグレードもしくはダウングレードする必要あり。
 </pre>
 6. Rojo 接続後の開発フロー
-Rojo を使う場合、Roblox Studio 側でスクリプトを作らないのが基本になる。
+- Rojo を使う場合、Roblox Studio 側でスクリプトを作らないのが基本になる。
 開発フロー：
+<pre>
 - VSCode の src/ に Lua ファイルを作る
 - Rojo が自動で Studio に同期する
 - Studio 側では動作確認だけ行う
 - 修正は VSCode 側で行う
 - GitHub に push してバージョン管理する
 　※Studio 側でスクリプトを直接編集すると、Rojo の同期で上書きされてしまうため、VSCode 側が唯一の編集場所になる。
+</pre>
 7. TestEZ の実行
 <pre>
 wally install
