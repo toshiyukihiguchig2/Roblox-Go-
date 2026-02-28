@@ -5,7 +5,10 @@
         "ReplicatedStorage": {
             "$className": "ReplicatedStorage",
             "Shared": {
-                "$path": "src/shared"
+                "$path": "src/shared",
+                "$className": "Shared",
+                "Remotes": {
+                    "$path": "src/shared/remotes"
             },
             "Packages": {
                 "$path": "Packages"
@@ -14,10 +17,22 @@
         "ServerScriptService": {
             "$className": "ServerScriptService",
             "Server": {
-                "$path": "src/server"
+                "$path": "src/server",
+                "$className": "Manager",
+                "Manager": {
+                    "$path": "src/server/manager"
             },
             "TestRunner": {
                 "$path": "src/runner"
+            }
+        },
+        "StarterPlayer": {
+            "$className": "StarterPlayer",
+            "StarterPlayerScripts": {
+                "$className": "StarterPlayerScripts",
+                "Client": {
+                    "$path": "src/client"
+                }
             }
         }
     }
