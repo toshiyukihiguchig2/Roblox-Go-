@@ -4,11 +4,12 @@
         "$className": "DataModel",
         "ReplicatedStorage": {
             "$className": "ReplicatedStorage",
-            "Shared": {
+            "shared": {
                 "$path": "src/shared",
-                "$className": "Shared",
+                "$className": "Folder",
                 "Remotes": {
-                    "$path": "src/shared/remotes"
+                    "$path": "src/shared/Remotes"
+                }
             },
             "Packages": {
                 "$path": "Packages"
@@ -17,13 +18,14 @@
         "ServerScriptService": {
             "$className": "ServerScriptService",
             "Server": {
-                "$path": "src/server",
-                "$className": "Manager",
-                "Manager": {
-                    "$path": "src/server/manager"
+                "$path": "src/Server",
+                "$className": "Folder",
+                "Managers": {
+                    "$path": "src/Server/Managers"
+                }
             },
             "TestRunner": {
-                "$path": "src/runner"
+                "$path": "src/TestRunner"
             }
         },
         "StarterPlayer": {
@@ -31,10 +33,11 @@
             "StarterPlayerScripts": {
                 "$className": "StarterPlayerScripts",
                 "Client": {
-                    "$path": "src/client",
-                    "$className": "StarterPlayerScripts",
+                    "$path": "src/Client",
+                    "$className": "Folder",
                     "Modules": {
-                        "$path": "src/client/modules"
+                        "$path": "src/Client/Modules"
+                    }
                 }
             }
         }
