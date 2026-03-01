@@ -1,5 +1,6 @@
 local TestEZ = require(game.ReplicatedStorage.Packages.TestEZ)
 local results = TestEZ.TestBootstrap:run({
-    game.ReplicatedStorage.Source.tests
+    game.ServerScriptService.Server,
+	game.ReplicatedStorage.Source
 }, TestEZ.Reporters.TextReporter)
 print("===== TestEZ Finished =====")
