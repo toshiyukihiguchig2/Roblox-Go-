@@ -5,6 +5,8 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SharedFolder = ReplicatedStorage:WaitForChild("shared")
+local RemotesFolder = SharedFolder:WaitForChild("Remotes")
 
 local GoalEffectManager = {}
 GoalEffectManager.__index = GoalEffectManager
@@ -18,7 +20,7 @@ function GoalEffectManager.new(activeStage)
 	local self = setmetatable({}, GoalEffectManager)
 
 	self.ActiveStage = activeStage
-	self.GoalEffectEvent = ReplicatedStorage:WaitForChild("GoalEffectEvent")
+	self.GoalEffectEvent = RemotesFolder:WaitForChild("GoalEffectEvent")
 
 	self._debounce = {}
 

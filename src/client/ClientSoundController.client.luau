@@ -9,7 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local SoundLibrary = require(
-	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SoundLibrary")
+	ReplicatedStorage:WaitForChild("shared"):WaitForChild("SoundLibrary")
 )
 
 --------------------------------------------------

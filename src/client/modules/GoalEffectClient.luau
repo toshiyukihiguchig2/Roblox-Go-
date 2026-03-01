@@ -7,9 +7,11 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService") -- 今後の拡張用
 local Debris = game:GetService("Debris")
+local SharedFolder = ReplicatedStorage:WaitForChild("shared")
+local RemotesFolder = SharedFolder:WaitForChild("Remotes")
 
 -- サーバーから発火されるRemoteEvent
-local GoalEffectEvent = ReplicatedStorage:WaitForChild("GoalEffectEvent")
+local GoalEffectEvent = RemotesFolder:WaitForChild("GoalEffectEvent")
 
 
 --==================================================

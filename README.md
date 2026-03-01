@@ -184,7 +184,7 @@ TestEZ = "roblox/testez@0.4.1"
         "$className": "DataModel",
         "ReplicatedStorage": {
             "$className": "ReplicatedStorage",
-            "Shared": {
+            "shared": {
                 "$path": "src/shared"
             },
             "Packages": {

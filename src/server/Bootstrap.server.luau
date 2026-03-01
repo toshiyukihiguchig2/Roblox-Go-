@@ -15,7 +15,7 @@ local ManagersFolder = script.Parent:WaitForChild("Managers")
 local ActiveStage = Workspace:WaitForChild("ActiveStage")
 local StageModels = ReplicatedStorage:WaitForChild("StageModels")
 local EasyFolder = StageModels:WaitForChild("Easy")
-local SharedFolder = ReplicatedStorage:WaitForChild("Shared")
+local SharedFolder = ReplicatedStorage:WaitForChild("shared")
 
 --------------------------------------------------
 -- ModuleScript 読み込み
@@ -41,7 +41,7 @@ stageGenerator:Generate()
 
 -- 各種マネージャー初期化
 local checkpointManager = CheckpointManager.new(ActiveStage)
-local goalManager       = GoalManager.new(ActiveStage)
+-- local goalManager       = GoalManager.new(ActiveStage)
 local goalEffectManager = GoalEffectManager.new(ActiveStage)
 
 print("All Managers initialized")

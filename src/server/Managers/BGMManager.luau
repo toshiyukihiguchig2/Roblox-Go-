@@ -7,7 +7,7 @@ local SoundService = game:GetService("SoundService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local SoundLibrary = require(
-	ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SoundLibrary")
+	ReplicatedStorage:WaitForChild("shared"):WaitForChild("SoundLibrary")
 )
 
 local BGMManager = {}

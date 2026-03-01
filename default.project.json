@@ -1,45 +1,39 @@
 {
-    "name": "Roblox-Go-",
-    "tree": {
-        "$className": "DataModel",
-        "ReplicatedStorage": {
-            "$className": "ReplicatedStorage",
-            "shared": {
-                "$path": "src/shared",
-                "$className": "Folder",
-                "Remotes": {
-                    "$path": "src/shared/Remotes"
-                }
-            },
-            "Packages": {
-                "$path": "Packages"
-            }
-        },
-        "ServerScriptService": {
-            "$className": "ServerScriptService",
-            "Server": {
-                "$path": "src/Server",
-                "$className": "Folder",
-                "Managers": {
-                    "$path": "src/Server/Managers"
-                }
-            },
-            "TestRunner": {
-                "$path": "src/TestRunner"
-            }
-        },
-        "StarterPlayer": {
-            "$className": "StarterPlayer",
-            "StarterPlayerScripts": {
-                "$className": "StarterPlayerScripts",
-                "Client": {
-                    "$path": "src/Client",
-                    "$className": "Folder",
-                    "Modules": {
-                        "$path": "src/Client/Modules"
-                    }
-                }
-            }
+  "name": "Roblox-Go-",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "shared": {
+        "$path": "src/shared",
+        "$className": "Folder"
+      },
+      "Packages": {
+        "$path": "Packages"
+      }
+    },
+
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Server": {
+        "$path": "src/Server",
+        "$className": "Folder"
+      },
+      "TestRunner": {
+        "$path": "src/TestRunner"
+      }
+    },
+
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "Client": {
+          "$path": "src/Client",
+          "$className": "Folder"
         }
+      }
     }
+  }
 }
