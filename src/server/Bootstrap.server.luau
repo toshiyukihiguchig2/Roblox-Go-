@@ -44,4 +44,17 @@ local checkpointManager = CheckpointManager.new(ActiveStage)
 -- local goalManager       = GoalManager.new(ActiveStage)
 local goalEffectManager = GoalEffectManager.new(ActiveStage)
 
+local Players = game:GetService("Players")
+
+local DataManager = require(script.Parent.DataModule.DataManager)
+local dataManager = DataManager.new()
+
+Players.PlayerAdded:Connect(function(player)
+    dataManager:_onPlayerAdded(player.UserId)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    dataManager:_onPlayerRemoving(player.UserId)
+end)
+
 print("All Managers initialized")

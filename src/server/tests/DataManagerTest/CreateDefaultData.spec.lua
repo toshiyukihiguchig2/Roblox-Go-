@@ -3,7 +3,7 @@
 return function()
 
 	local DataManager = require(
-		game.ServerScriptService.Server.DataModule.DataManager
+		script.Parent.Parent.Parent.DataModule.DataManager
 	)
 
 	describe("_createDefaultData", function()
@@ -43,6 +43,34 @@ return function()
 			local fresh = DataManager:_createDefaultData()
 
 			expect(fresh.SomeField).never.to.equal("changed")
+
+		end)
+
+		it("[_createDefaultData()]returns completely new deep structure", function()
+
+			local data = DataManager:_createDefaultData()
+			local fresh = DataManager:_createDefaultData()
+
+			-- トップレベル参照
+			expect(data).never.to.equal(fresh)
+
+			-- ネスト参照
+			expect(data.Currency).never.to.equal(fresh.Currency)
+			expect(data.Stats).never.to.equal(fresh.Stats)
+
+		end)
+
+		it("[_createDefaultData()]does not mutate DefaultData nested tables", function()
+
+			local data = DataManager:_createDefaultData()
+
+			data.Currency.Gold = 999
+			data.Stats.Easy.Wins = 5
+
+			local template = DataManager.DefaultData
+
+			expect(template.Currency.Gold).to.equal(0)
+			expect(template.Stats.Easy.Wins).to.equal(0)
 
 		end)
 

@@ -5,10 +5,18 @@
 ---- SaveQueueをUserIdベースへ変更
 
 --==================================================
--- DataManager (ModuleScript)
--- DataStore永続化、キャッシュ、マイグレーション管理
+--// DataManager (ModuleScript)
+--   DataStore永続化、キャッシュ、マイグレーション管理
+--   ［DataStoreイメージ：1 プレイヤー = 1 DataStore］
+--     DataStore: PlayerData_v1
+--      └── Key: Player_123456   ：ユーザID
+--            ├── Currency      ：Gold = 500, Gems = 12,
+--            ├── Inventory     ：HighJump01 = 1, SpeedBoost01 = 3, SpeedBoost03 = 50
+--            ├── EquippedItem  ：HighJump01 = true, SpeedBoost01 = false, SpeedBoost03 = true
+--            ├── Stats.Easy    ：BestTime = 45.2, Wins = 3, PlayCount = 10
+--            ├── Stats.Normal  ：BestTime = nil,  Wins = 0, PlayCount = 0
+--            └── Stats.Hard    ：BestTime = nil,  Wins = 0, PlayCount = 0
 --==================================================
-
 local DataManager = {}
 DataManager.__index = DataManager
 
@@ -27,25 +35,23 @@ local MAX_GOLD = 1_000_000_000
 local MAX_GEMS = 1_000_000
 local MAX_WINS = 100_000
 local MAX_PLAYS = 1_000_000
-local MAX_INVENTORY_ITEMS = 200
+local DIFFICULTIES = {
+	Easy = true,
+	Normal = true,
+	Hard = true,
+}
+local MAX_ITEM_COUNT = 999
 local MIN_BEST_TIME = 1      -- 1秒未満は無効
 local MAX_BEST_TIME = 10_000 -- 異常値防止（約3時間）
+local MAX_ALLOWED_TIME = 600
 
 --// DataStore Retry Settings
 local MAX_RETRIES = 3
 local BASE_DELAY = 1 -- seconds
 
---// Session Cache
-local SessionData = {}
-local SaveQueue = {}
-local LastSaveTime = {}
-local IsSaving = {}
-local DirtyFlags = {}
-local IsLoading = {}
-
 --// Default Data Template
 local DefaultData = {
-	Version = 1,
+	Version = CURRENT_VERSION,
 	Currency = {
 		Gold = 0,
 		Gems = 0,
@@ -57,25 +63,59 @@ local DefaultData = {
 	},
 	Inventory = {},
 }
+DataManager.DefaultData = DefaultData
+
+--// Forward declarations
+local playerStore
+local migrateToV2
+local migrateToV3
 
 --------------------------------------------------
--- 本番・テスト切り替え用
--- ［呼び出し例：本番］
---   DataManager:Init()
---
--- ［呼び出し例：テスト（TestRunner）］
---   local mock = MockDataStore.new()
---   DataManager:SetDataStore(mock)
---   DataManager:Init()
+-- コンストラクタ
+-- ※依存注入可能、並列サーバー安全対策
+-- ※データや処理を「複数のグループ（Shard）」に分割して管理可能
+--   Easy・Normal・Hardロビー（サーバー）：各専用ロビーへのシャーディング対策
 --------------------------------------------------
-local playerStore = nil
-function DataManager:SetDataStore(store)
-	playerStore = store
+--  ［シャーディング例：Easy用DataManager、DataStore］
+--    local EasyDataManager = DataManager.new("Easy")
+--
+--    local shardName = "Easy"
+--    local dataStoreName = "PlayerData_" .. shardName　　→　"PlayerData_Easy"
+--    local easyStore = DataStoreService:GetDataStore(dataStoreName)
+--
+--------------------------------------------------
+--  ［シャーディング例：Hard用DataManager、DataStore］
+--    local HardDataManager = DataManager.new("Hard")
+--
+--    local shardName = "Hard"
+--    local dataStoreName = "PlayerData_" .. shardName　　→　"HardEasy"
+--    local hardStore = DataStoreService:GetDataStore(dataStoreName)
+--
+--------------------------------------------------
+function DataManager.new(customDataStore)
+	local self = setmetatable({}, DataManager)
+
+	-- 依存注入対応
+	if customDataStore then
+		self._dataStore = customDataStore
+	else
+		self._dataStore = DataStoreService:GetDataStore("PlayerData")
+	end
+	self._sessionData = {}
+	self._saveQueue = {}
+	self._lastSaveTime = {}
+	self._isSaving = {}
+	self._dirtyFlags = {}
+	self._isLoading = {}
+
+	return self
 end
 
---------------------------------------------------
+--==============================================================
+-- Public API
+----------------------------------------------------------------
 -- 初期処理（Init）
---------------------------------------------------
+----------------------------------------------------------------
 function DataManager:Init()
 
     if not playerStore then
@@ -84,10 +124,6 @@ function DataManager:Init()
 	else
 		print("[DataManager] Using Custom DataStore")
 	end
-
-	Players.PlayerAdded:Connect(function(player)
-		self:_onPlayerAdded(player)
-	end)
 
 	Players.PlayerRemoving:Connect(function(player)
 		self:_onPlayerRemoving(player)
@@ -98,6 +134,80 @@ function DataManager:Init()
 	self:_startAutoSaveLoop()
 end
 
+----------------------------------------------------------------
+-- プレイヤー保存要求
+-- ※Session未存在時は拒否
+-- ※戻り値で成功/失敗を明示
+----------------------------------------------------------------
+function DataManager:RequestSave(player)
+	if not player then
+		return false
+	end
+
+	local userId = player.UserId
+
+	if not self._sessionData[userId] then
+		return false
+	end
+
+	if self._saveQueue[userId] then
+		return true
+	end
+
+	self._saveQueue[userId] = true
+	return true
+end
+
+----------------------------------------------------------------
+-- 
+-- 
+-- 
+----------------------------------------------------------------
+function DataManager:SetDirty(playerOrUserId)
+
+	local userId =
+		typeof(playerOrUserId) == "number"
+		and playerOrUserId
+		or playerOrUserId.UserId
+
+	if self._sessionData[userId] then
+		self._dirtyFlags[userId] = true
+	end
+end
+
+----------------------------------------------------------------
+-- 
+-- 
+-- 
+----------------------------------------------------------------
+function DataManager:UpdateCurrency(player, amount)
+
+	local userId = player.UserId
+	local data = self._sessionData[userId]
+	if not data then return end
+
+	data.Currency.Gold += amount
+	self:SetDirty(player)
+
+end
+
+----------------------------------------------------------------
+-- 本番・テスト切り替え用
+-- ［呼び出し例：本番］
+--   DataManager:Init()
+--
+-- ［呼び出し例：テスト（TestRunner）］
+--   local mock = MockDataStore.new()
+--   DataManager:SetDataStore(mock)
+--   DataManager:Init()
+----------------------------------------------------------------
+function DataManager:SetDataStore(store)
+	playerStore = store
+end
+
+--==============================================================
+-- Private Core Logic
+-- (Player Lifecycle)
 ----------------------------------------------------------------
 -- プレイヤーロード処理
 -- [プレイヤーロードのフロー]
@@ -117,54 +227,132 @@ end
 --    ↓
 -- DirtyFlag初期化
 ----------------------------------------------------------------
-function DataManager:_onPlayerAdded(player)
+function DataManager:_onPlayerAdded(userId)
 
-	-- 二重ロード防止
-	if SessionData[player] or IsLoading[player] then
+	if self._sessionData[userId] or self._isLoading[userId] then
 		return
 	end
 
-	IsLoading[player] = true
+	self._isLoading[userId] = true
 
-	local key = "Player_" .. player.UserId
+	local success, err = pcall(function()
 
-	----------------------------------------------------------------
-	-- 1. GetAsync（指数バックオフ）
-	----------------------------------------------------------------
-	local rawData = self:_getAsyncWithRetry(playerStore, key)
+		local key = "Player_" .. userId
 
-	----------------------------------------------------------------
-	-- 2. データが存在しない場合
-	----------------------------------------------------------------
-	if not rawData then
-		rawData = self:_createDefaultData()
+		----------------------------------------------------------------
+		-- 1. GetAsync（指数バックオフ）
+		----------------------------------------------------------------
+		local rawData = self:_getAsyncWithRetry(key)
+
+		----------------------------------------------------------------
+		-- 2. データが存在しない場合
+		-- 3. マイグレーション
+		----------------------------------------------------------------
+		if rawData then
+			rawData = self:_migrate(rawData)
+		else
+			rawData = self:_createDefaultData()
+		end
+
+		----------------------------------------------------------------
+		-- 4. 構造サニタイズ
+		----------------------------------------------------------------
+		rawData = self:_sanitize(rawData)
+
+		----------------------------------------------------------------
+		-- 5. ゲームルール適用
+		----------------------------------------------------------------
+		rawData = self:_applyGameRules(rawData)
+
+		----------------------------------------------------------------
+		-- 6. セッション登録
+		----------------------------------------------------------------
+		self._sessionData[userId] = rawData
+		self._dirtyFlags[userId] = false
+		self._lastSaveTime[userId] = os.clock()
+	end)
+
+	self._isLoading[userId] = nil
+
+	if not success then
+		warn("[DataManager] Failed loading user:", userId, err)
 	end
-
-	----------------------------------------------------------------
-	-- 3. マイグレーション
-	----------------------------------------------------------------
-	rawData = self:_migrate(rawData)
-
-	----------------------------------------------------------------
-	-- 4. 構造サニタイズ
-	----------------------------------------------------------------
-	rawData = self:_sanitize(rawData)
-
-	----------------------------------------------------------------
-	-- 5. ゲームルール適用
-	----------------------------------------------------------------
-	rawData = self:_applyGameRules(rawData)
-
-	----------------------------------------------------------------
-	-- 6. セッション登録
-	----------------------------------------------------------------
-	SessionData[player] = rawData
-	DirtyFlags[player] = false
-	LastSaveTime[player] = os.clock()
-
-	IsLoading[player] = nil
 end
 
+----------------------------------------------------------------
+-- 
+-- 
+-- 
+----------------------------------------------------------------
+function DataManager:_onPlayerRemoving(playerOrUserId)
+
+	local userId =
+		typeof(playerOrUserId) == "number"
+		and playerOrUserId
+		or playerOrUserId.UserId
+
+	if not self._sessionData[userId] then
+		return
+	end
+
+	-- 保存実行
+	self:_performSave(userId)
+
+	-- メモリ解放
+	self._sessionData[userId] = nil
+	self._dirtyFlags[userId] = nil
+	self._saveQueue[userId] = nil
+	self._lastSaveTime[userId] = nil
+	self._isSaving[userId] = nil
+	self._isLoading[userId] = nil
+end
+
+----------------------------------------------------------------
+-- 
+-- 
+-- 
+----------------------------------------------------------------
+function DataManager:_bindToClose()
+
+	game:BindToClose(function()
+
+		local players = Players:GetPlayers()
+
+		-- ① 全員保存要求
+		for _, player in ipairs(players) do
+			task.spawn(function()
+				self:_performSave(player)
+			end)
+		end
+
+		-- ② 最大25秒待機
+		local timeout = os.clock() + 25
+
+		while os.clock() < timeout do
+			if not self:_hasActiveSaves() then
+				break
+			end
+			task.wait(0.5)
+		end
+
+	end)
+end
+
+--------------------------------------------------
+-- 保存中が存在するか判定
+--------------------------------------------------
+function DataManager:_hasActiveSaves()
+	for _, isSaving in pairs(self._isSaving) do
+		if isSaving then
+			return true
+		end
+	end
+	return false
+end
+
+--==============================================================
+-- Utility functions
+-- (Save System)
 ----------------------------------------------------------------
 -- 指数バックオフ付きGetAsync：失敗時の挙動→ DefaultData生成でゲーム継続UX優先
 -- ※外部サービス（DataStore等）のネットワーク瞬断対策
@@ -172,7 +360,7 @@ end
 -- ※サーバー起動直後の負荷集中対策
 -- ※DataStoreのpcall呼び出しエラーによるサーバーダウン対策
 ----------------------------------------------------------------
-function DataManager:_getAsyncWithRetry(store, key)
+function DataManager:_getAsyncWithRetry(key)
 
 	local attempt = 0
 
@@ -180,7 +368,7 @@ function DataManager:_getAsyncWithRetry(store, key)
 		attempt += 1
 
 		local success, result = pcall(function()
-			return store:GetAsync(key)
+			return self._dataStore:GetAsync(key)
 		end)
 
 		if success then
@@ -193,7 +381,6 @@ function DataManager:_getAsyncWithRetry(store, key)
 				tostring(result)
 			))
 
-			-- 最終試行なら終了
 			if attempt >= MAX_RETRIES then
 				break
 			end
@@ -207,77 +394,111 @@ function DataManager:_getAsyncWithRetry(store, key)
 	return nil
 end
 
---------------------------------------------------
--- DeepCopy Utility（安全な間接参照作成）
--- ※参照渡し（Pass-by-reference）対策
--- ※table.clone()によるシャローコピー状態を対策（深層が参照のままになっていることがあるので）
---------------------------------------------------
-local function deepCopy(original, visited)
-	visited = visited or {}
+----------------------------------------------------------------
+-- プレイヤーからの保存要求
+----------------------------------------------------------------
+function DataManager:_performSave(player)
 
-	-- プリミティブ型はそのまま返す
-	if type(original) ~= "table" then
-		return original
+	local userId = player.UserId
+
+	if self._isSaving[userId] then
+		return
 	end
 
-	-- 循環参照対策
-	if visited[original] then
-		return visited[original]
+	local key = "Player_" .. userId
+	local data = self._sessionData[userId]
+
+	if not data then
+		return
 	end
 
-	local copy = {}
-	visited[original] = copy
+	self._isSaving[userId] = true
 
-	for key, value in pairs(original) do
-		copy[deepCopy(key, visited)] = deepCopy(value, visited)
+	local success, err = pcall(function()
+		playerStore:UpdateAsync(key, function(oldData)
+
+			oldData = oldData or self:_createDefaultData()
+
+			oldData = self:_sanitize(oldData)
+
+			oldData.Currency = self:DeepCopy(data.Currency)
+			oldData.Stats = self:DeepCopy(data.Stats)
+			oldData.Inventory = self:DeepCopy(data.Inventory)
+
+			return oldData
+		end)
+	end)
+
+	if not success then
+		warn("[DataManager] Save failed:", err)
+	else
+		self._lastSaveTime[userId] = os.clock()
 	end
 
-	return copy
+	self._isSaving[userId] = false
 end
 
---------------------------------------------------
--- マイグレーション関数
--- ※現時点では仮定した変更内容でv3までを準備しておく
---------------------------------------------------
--- v1 → v2 例
-local function migrateToV2(data)
-	-- 例: Settings追加
-	if data.Settings == nil then
-		data.Settings = {
-			SFX = true,
-			BGM = true,
-		}
-	end
+----------------------------------------------------------------
+-- キュー監視ループ
+----------------------------------------------------------------
+function DataManager:_startSaveLoop()
+    task.spawn(function()
+        while true do
+            for userId in pairs(self._saveQueue) do
 
-	data.Version = 2
-	return data
+                local player = Players:GetPlayerByUserId(userId)
+                if not player then
+                    self._saveQueue[userId] = nil
+                    continue
+                end
+
+                local lastTime = self._lastSaveTime[userId] or 0
+                local now = os.clock()
+
+                if now - lastTime >= SAVE_COOLDOWN then
+                    self:_performSave(player)
+                    self._dirtyFlags[userId] = false
+                    self._saveQueue[userId] = nil
+                end
+            end
+
+            task.wait(1)
+        end
+    end)
 end
 
--- v2 → v3 例
-local function migrateToV3(data)
-	-- 例: GoldをCoinsへ名称変更
-	if data.Currency and data.Currency.Gold then
-		data.Currency.Coins = data.Currency.Gold
-		data.Currency.Gold = nil
-	end
+----------------------------------------------------------------
+-- AutoSave Loop
+-- ※定期保存によるサーバークラッシュ対策の保険
+-- ※保存キュー経由のため直接保存しない
+-- ※DirtyFlag依存のため変更が無いプレイヤーは保存しない
+----------------------------------------------------------------
+function DataManager:_startAutoSaveLoop()
 
-	data.Version = 3
-	return data
+	task.spawn(function()
+		while true do
+			task.wait(AUTOSAVE_INTERVAL)
+
+			for userId, data in pairs(self._sessionData) do
+				if self._dirtyFlags[userId] then
+					local player = Players:GetPlayerByUserId(userId)
+					if player then
+						self:RequestSave(player)
+					end
+				end
+			end
+		end
+	end)
 end
 
--- v4 コメント残ししておく
--- local function migrateToV4(data)
--- 	-- 追加処理
--- 	data.Version = 4
--- 	return data
--- end
-
---------------------------------------------------
+--==============================================================
+-- Utility functions
+-- (Data Processing Pipeline)
+----------------------------------------------------------------
 -- マイグレーション：差分マイグレーション方式
 -- ※クラッシュ防止（nilチェック徹底、typeチェック、未知バージョンはbreak）
 -- ※データ継続性（既存値は絶対に上書きしない）
--- ※拡張性（ver4を追加する場合を考慮してコメント残ししておく）
---------------------------------------------------
+----------------------------------------------------------------
 function DataManager:_migrate(data)
 	if not data then
 		return self:_createDefaultData()
@@ -297,9 +518,6 @@ function DataManager:_migrate(data)
 		elseif data.Version == 2 then
 			data = migrateToV3(data)
 
-		-- elseif data.Version == 3 then
-	    --     data = migrateToV4(data)
-
 		else
 			warn("Unknown data version:", data.Version)
 			break
@@ -310,315 +528,487 @@ function DataManager:_migrate(data)
 end
 
 ----------------------------------------------------------------
+-- マイグレーション関数
+-- ※現時点では仮定した変更内容でv3までを準備しておく
+----------------------------------------------------------------
+-- v1 → v2 例
+function DataManager:migrateToV2(data)
+	-- 例: Settings追加
+	if data.Settings == nil then
+		data.Settings = {
+			SFX = true,
+			BGM = true,
+		}
+	end
+
+	data.Version = 2
+	return data
+end
+
+-- v2 → v3 例
+function DataManager:migrateToV3(data)
+	-- 例: GoldをCoinsへ名称変更
+	if data.Currency and data.Currency.Gold then
+		data.Currency.Coins = data.Currency.Gold
+		data.Currency.Gold = nil
+	end
+
+	data.Version = 3
+	return data
+end
+
+----------------------------------------------------------------
 -- Create Default Data (Safe Instance)
 ----------------------------------------------------------------
 function DataManager:_createDefaultData()
+	local success, newData = pcall(function()
+		return self:DeepCopy(DefaultData)
+	end)
 
-	local newData = deepCopy(DefaultData)
+	if not success or type(newData) ~= "table" then
+		warn("[DataManager] Failed to create default data. Rebuilding minimal structure.")
 
-	-- 念のためVersionを保証
+		-- 最低限のフェイルセーフ
+		newData = {
+			Version = CURRENT_VERSION,
+			Currency = {
+				Gold = 0,
+				Gems = 0,
+			},
+			Stats = {},
+			Inventory = {}
+		}
+	end
+
+	-- Version保証
 	newData.Version = CURRENT_VERSION
 
 	return newData
 end
 
 ----------------------------------------------------------------
--- 数値チェックユーティリティ
--- ※文字列数値の混入対策
--- ※nilエラーの回避
--- ※無限値（math.huge / -math.huge）対策
-----------------------------------------------------------------
-local function isValidNumber(value)
-	if type(value) ~= "number" then
-		return false
-	end
-
-	if value ~= value then -- NaNチェック
-		return false
-	end
-
-	if value == math.huge or value == -math.huge then
-		return false
-	end
-
-	return true
-end
-
+-- |処理				|役割
+-- |sanitize			|型・値を正す
+-- |removeExtraKeys		|余分キー削除
+-- |reconcile			|不足キー補完
 --------------------------------------------------
--- テンプレート主導Reconcile方式
--- ※マイナス値の注入対策、型の不一致（Type Mismatch）
+-- テンプレート主導reconcile方式
 -- ※構造の欠落（Missing Keys）、NaN（Not a Number）の混入対策
--- ※DefaultData（雛形）と現在のデータを照合（Reconcile）し、型と値を同時に修正する
 --------------------------------------------------
-local function reconcile(data, template)
+function DataManager:reconcile(data, template)
+	-- 安全チェック
+	if type(data) ~= "table" then
+		warn("[DataManager] reconcile: data is not table. Resetting.")
+		return self:DeepCopy(template)
+	end
+
 	for key, defaultValue in pairs(template) do
-		
 		local currentValue = data[key]
 
-		-- 欠落している場合は補完
+		-- 存在しない場合は補完
 		if currentValue == nil then
-			data[key] = deepCopy(defaultValue)
+			data[key] = self:DeepCopy(defaultValue)
 
-		elseif type(defaultValue) == "table" then
-			-- テーブルの場合は再帰処理
-			if type(currentValue) ~= "table" then
-				data[key] = deepCopy(defaultValue)
-			else
-				reconcile(currentValue, defaultValue)
-			end
+		-- 両方tableなら再帰
+		elseif type(defaultValue) == "table"
+			and type(currentValue) == "table" then
 
-		elseif type(defaultValue) == "number" then
-			if not isValidNumber(currentValue) then
-				data[key] = defaultValue
-			else
-				-- マイナス値防止
-				if currentValue < 0 then
-					data[key] = 0
-				end
-			end
+			self:reconcile(currentValue, defaultValue)
 
-		elseif type(defaultValue) ~= type(currentValue) then
-			-- 型不一致はDefaultへ戻す
-			data[key] = defaultValue
+		-- 型が違う場合は修正（重要）
+		elseif type(currentValue) ~= type(defaultValue) then
+			warn(("[DataManager] Type mismatch on key '%s'. Resetting."):format(key))
+			data[key] = self:DeepCopy(defaultValue)
 		end
 	end
-end
 
---------------------------------------------------
--- 不正値防止（データサニタイズ）：
---------------------------------------------------
-function DataManager:_sanitize(data)
-	reconcile(data, DefaultData)
 	return data
 end
 
---------------------------------------------------
--- プレイヤー保存要求
---------------------------------------------------
-function DataManager:RequestSave(player)
-	if not player then return end
-	SaveQueue[player] = true
-end
-
 ----------------------------------------------------------------
--- AutoSave Loop
--- ※定期保存によるサーバークラッシュ対策の保険
--- ※保存キュー経由のため直接保存しない
--- ※DirtyFlag依存のため変更が無いプレイヤーは保存しない
+-- |処理				|役割
+-- |sanitize			|型・値を正す
+-- |removeExtraKeys		|余分キー削除
+-- |reconcile			|不足キー補完
 ----------------------------------------------------------------
-function DataManager:_startAutoSaveLoop()
-
-	task.spawn(function()
-		while true do
-			task.wait(AUTOSAVE_INTERVAL)
-
-			for player, data in pairs(SessionData) do
-				if DirtyFlags[player] then
-					self:RequestSave(player)
-				end
-			end
-		end
-	end)
-end
-
+-- 不正キー削除
+--
+-- ※現在のスキーマに適合させることを目的とする（reconcileとは別にして役割を分業する）
+-- ※DefaultDataに存在しないキーは削除するが、将来拡張に備えVersionは処理対象から除外しておく
+-- ［不正キー削除仕様］
+-- ※未定義の不正キーを削除、reconcile前に一度通すこと
 ----------------------------------------------------------------
--- 余分キー削除
--- ※DefaultDataに存在しないキーは削除するが、将来拡張に備え Versionは除外
-----------------------------------------------------------------
-local function removeExtraKeys(data, template)
-	for key in pairs(data) do
-		if template[key] == nil and key ~= "Version" then
+function DataManager:removeExtraKeys(data, template)
+	for key, value in pairs(data) do
+
+		-- Versionは例外的に保持
+		if key ~= "Version" and template[key] == nil then
 			data[key] = nil
-		elseif type(data[key]) == "table" and type(template[key]) == "table" then
-			removeExtraKeys(data[key], template[key])
+
+		elseif type(value) == "table" and type(template[key]) == "table" then
+			self:removeExtraKeys(value, template[key])
 		end
 	end
 end
 
 ----------------------------------------------------------------
--- Inventory個数制限
--- ※DataStore 4MB上限対策、DoS防止、メモリ保護
+-- |処理				|役割
+-- |sanitize			|型・値を正す
+-- |removeExtraKeys		|余分キー削除
+-- |reconcile			|不足キー補完
 ----------------------------------------------------------------
-local function sanitizeInventory(data)
-	if type(data.Inventory) ~= "table" then
-		data.Inventory = {}
-		return
+-- 不正値防止（データサニタイズ）：
+-- ［サニタイズ処理仕様］
+--  以下を順次呼び出し。
+--  型ガード（完全破損対策）、値サニタイズ（ホワイトリスト再構築）
+--  未定義キー削除（スキーマ外排除）、欠落補完（完全スキーマ化）
+----------------------------------------------------------------
+function DataManager:_sanitize(data)
+
+	-- ① 完全破損
+	if typeof(data) ~= "table" then
+		data = {}
 	end
 
-	local count = 0
-	for key in pairs(data.Inventory) do
-		count += 1
-		if count > MAX_INVENTORY_ITEMS then
-			data.Inventory[key] = nil
-		end
+	-- ② 構造保証
+	print("② 構造保証")
+	local status, err = pcall(function()
+		self:reconcile(data)
+	end)
+	if not status then
+		warn("Error applying game rules:", err)
 	end
-end
+	data = self:reconcile(data, self.DefaultData)
 
-----------------------------------------------------------------
--- 最大値上限制限
-----------------------------------------------------------------
-local function clampCurrency(data)
-	if data.Currency then
-		data.Currency.Gold = math.clamp(data.Currency.Gold or 0, 0, MAX_GOLD)
-		data.Currency.Gems = math.clamp(data.Currency.Gems or 0, 0, MAX_GEMS)
+	-- ③ 値の正常化
+	print("③ 値の正常化")
+	local status, err = pcall(function()
+		self:sanitizeInventory(data)
+	end)
+	if not status then
+		warn("Error applying game rules:", err)
 	end
-end
+	data.Inventory = self:sanitizeInventory(data.Inventory)
+	data.Stats = self:sanitizeStats(data.Stats)
 
-----------------------------------------------------------------
--- Stats制限＋BestTime妥当性
-----------------------------------------------------------------
-local function sanitizeStats(data)
-	if not data.Stats then return end
-
-	for _, difficultyData in pairs(data.Stats) do
-
-		-- Wins / Plays 制限
-		difficultyData.Wins = math.clamp(difficultyData.Wins or 0, 0, MAX_WINS)
-		difficultyData.Plays = math.clamp(difficultyData.Plays or 0, 0, MAX_PLAYS)
-
-		-- BestTime 妥当性チェック
-		local bestTime = difficultyData.BestTime
-
-		if bestTime ~= nil then
-			if type(bestTime) ~= "number" then
-				difficultyData.BestTime = nil
-			elseif bestTime ~= bestTime then -- NaN
-				difficultyData.BestTime = nil
-			elseif bestTime < MIN_BEST_TIME or bestTime > MAX_BEST_TIME then
-				difficultyData.BestTime = nil
-			end
-		end
+	-- ④ ゲームルール適用（整合性保証）
+	print("④ ゲームルール適用（整合性保証）")
+	local status, err = pcall(function()
+		self:_applyGameRules(data)
+	end)
+	if not status then
+		warn("Error applying game rules:", err)
 	end
+	data = self:_applyGameRules(data)
+
+	-- ⑤ 余計なキー削除
+	self:removeExtraKeys(data, self.DefaultData)
+
+	return data
 end
 
 ----------------------------------------------------------------
 -- Apply Game Logic Rules
 ----------------------------------------------------------------
 function DataManager:_applyGameRules(data)
+	if type(data) ~= "table" then
+		return self:_createDefaultData()
+	end
 
-	-- 余分キー削除
-	removeExtraKeys(data, DefaultData)
+	--------------------------------------------------
+	-- ① Currency安全化
+	--------------------------------------------------
 
-	-- Inventory制限
-	sanitizeInventory(data)
+	if type(data.Currency) ~= "table" then
+		data.Currency = {}
+	end
 
-	-- Currency制限
-	clampCurrency(data)
+	data.Currency.Gold =
+		self:clampCurrency(data.Currency.Gold, MAX_GOLD)
 
-	-- Stats制限
-	sanitizeStats(data)
+	data.Currency.Gems =
+		self:clampCurrency(data.Currency.Gems, MAX_GEMS)
+
+	--------------------------------------------------
+	-- ② Stats構造保証
+	--------------------------------------------------
+
+	if type(data.Stats) ~= "table" then
+		data.Stats = {}
+	end
+
+	data.Stats = self:sanitizeStats(data.Stats)
+
+	--------------------------------------------------
+	-- ③ ゲーム整合性ルール適用
+	--------------------------------------------------
+
+	for difficulty, stats in pairs(data.Stats) do
+		if type(stats) == "table" then
+
+			local wins = stats.Wins
+			local plays = stats.Plays
+
+			-- Wins > Plays 防止（両方存在する時のみ）
+			if wins ~= nil and plays ~= nil then
+				if wins > plays then
+					stats.Wins = plays
+					wins = plays
+				end
+			end
+
+			-- 勝利ゼロならBestTime削除
+			if wins == 0 then
+				stats.BestTime = nil
+			end
+
+			-- BestTime妥当性（nil安全）
+			if stats.BestTime ~= nil then
+				if not self:isValidNumber(stats.BestTime)
+					or stats.BestTime <= 0
+					or stats.BestTime > MAX_ALLOWED_TIME then
+
+					stats.BestTime = nil
+				end
+			end
+		end
+	end
 
 	return data
 end
 
+--==============================================================
+-- Utility functions
+-- (Sanitizers)
+----------------------------------------------------------------
+-- |処理				|役割
+-- |sanitize			|型・値を正す
+-- |removeExtraKeys		|余分キー削除
+-- |reconcile			|不足キー補完
+----------------------------------------------------------------
+-- 所持アイテム管理
+-- ※DataStore 4MB上限対策、DoS防止、メモリ保護
+-- ［data.Inventory仕様］
+--  数量は 1〜999、不正値は削除、小数は切り捨て、非数値は削除
+--  不正キーを除去する
+--  予期せぬメタデータを排除する
+----------------------------------------------------------------
+function DataManager:sanitizeInventory(data)
 
---------------------------------------------------
--- プレイヤーからの保存要求
---------------------------------------------------
-local function performSave(self, player)
-
-	if IsSaving[player] then
+	if typeof(data) ~= "table" then
 		return
 	end
 
-	local userId = player.UserId
-	local key = "Player_" .. userId
-	local data = SessionData[player]
-
-	if not data then
+	if typeof(data.Inventory) ~= "table" then
+		data.Inventory = {}
 		return
 	end
 
-	IsSaving[player] = true
+	local clean = {}
 
-	local success, err = pcall(function()
-		playerStore:UpdateAsync(key, function(oldData)
-			return data
-		end)
-	end)
+	for itemId, count in pairs(data.Inventory) do
 
-	if not success then
-		warn("[DataManager] Save failed:", err)
-	else
-		LastSaveTime[player] = os.clock()
-	end
+		-- キーが文字列か
+		if typeof(itemId) == "string"
+			and self:isValidNumber(count) then
 
-	IsSaving[player] = false
-end
+			count = math.floor(count)
 
---------------------------------------------------
--- キュー監視ループ
---------------------------------------------------
-function DataManager:_startSaveLoop()
-
-	task.spawn(function()
-		while true do
-			for player in pairs(SaveQueue) do
-				
-				local lastTime = LastSaveTime[player] or 0
-				local now = os.clock()
-
-				if now - lastTime >= SAVE_COOLDOWN then
-					performSave(self, player)
-					SaveQueue[player] = nil
-				end
+			if count > 0 then
+				clean[itemId] = math.clamp(count, 1, MAX_ITEM_COUNT)
 			end
-
-			task.wait(1)
 		end
-	end)
+	end
+
+	data.Inventory = clean
 end
 
-function DataManager:_onPlayerRemoving(player)
+----------------------------------------------------------------
+-- |処理				|役割
+-- |sanitize			|型・値を正す
+-- |removeExtraKeys		|余分キー削除
+-- |reconcile			|不足キー補完
+----------------------------------------------------------------
+-- ゲームステータス管理（Stats制限＋BestTime妥当性）
+-- ［ステータス管理仕様］
+--  不正difficulty削除、不正フィールド削除、型が違えば初期化（Type Mismatch）
+--  整数はfloor、上限clamp、マイナス値の注入対策
+--  難易度：（Easy / Normal / Hard）
+--  BestTime：number、0より大きい、小数を扱う
+--  Wins：整数、0以上、上限あり（100_000にしておく）
+--  Plays：整数、0以上、上限あり（1_000_000にしておく）
+----------------------------------------------------------------
+function DataManager:sanitizeStats(data)
 
-	if not SessionData[player] then
+	if type(data) ~= "table" then
+        return
+    end
+
+	if type(data.Stats) ~= "table" then
+		data.Stats = {}
 		return
 	end
 
-	-- 保存実行（即）
-	performSave(self, player)
+	local VALID_DIFFICULTIES = {
+		Easy = true,
+		Normal = true,
+		Hard = true
+	}
 
-	-- メモリ解放
-	SessionData[player] = nil
-	DirtyFlags[player] = nil
-	SaveQueue[player] = nil
-	LastSaveTime[player] = nil
-	IsSaving[player] = nil
-end
+	for difficulty, stats in pairs(data.Stats) do
 
-function DataManager:_bindToClose()
+		-- 不正difficulty削除
+		if not VALID_DIFFICULTIES[difficulty] then
+			data.Stats[difficulty] = nil
+			continue
+		end
 
-	game:BindToClose(function()
+		if type(stats) ~= "table" then
+			data.Stats[difficulty] = nil
+			continue
+		end
 
-		local players = Players:GetPlayers()
+		-- =====================
+		-- Plays
+		-- =====================
 
-	    for _, player in ipairs(players) do
-		    performSave(self, player)
-	    end
+		if not self:isValidNumber(stats.Plays) then
+			stats.Plays = 0
+		else
+			stats.Plays = math.floor(stats.Plays)
 
-		-- Robloxは最大30秒待ってくれる
-		task.wait(5)
-	end)
-end
+			if stats.Plays < 0 then
+				stats.Plays = nil -- ← negativeは削除
+			elseif stats.Plays > MAX_PLAYS then
+				stats.Plays = MAX_PLAYS
+			end
+		end
 
-function DataManager:SetDirty(player)
-	if SessionData[player] then
-		DirtyFlags[player] = true
+		-- =====================
+		-- Wins
+		-- =====================
+
+		local wins = stats.Wins
+
+		-- ① 型と数値妥当性
+		if not self:isValidNumber(wins) then
+			stats.Wins = 0
+		else
+			-- ② 正規化
+			wins = math.floor(wins)
+
+			-- ③ 負値は0
+			if wins < 0 then
+				stats.Wins = 0
+
+			-- ④ 上限クランプ
+			elseif wins > MAX_WINS then
+				stats.Wins = MAX_WINS
+
+			else
+				stats.Wins = wins
+			end
+		end
+
+		-- =====================
+		-- BestTime
+		-- =====================
+
+		if stats.BestTime ~= nil then
+			if not self:isValidNumber(stats.BestTime)
+				or stats.BestTime < MIN_BEST_TIME
+				or stats.BestTime > MAX_BEST_TIME then
+
+				stats.BestTime = nil
+			end
+		end
 	end
 end
 
-function DataManager:UpdateCurrency(player, amount)
-	local data = SessionData[player]
-	if not data then return end
+----------------------------------------------------------------
+-- 通貨制限チェック
+-- ※保存前の改ざん対策（型チェック、NaN対策、Infinity対策、テーブル破損対策）
+-- ［通貨仕様］
+--  整数のみ（マイナス値の注入対策）、下限 0、上限あり（MAX_GOLD / MAX_GEMS）
+--  小数は切り捨て、不正値（nil / 文字列 / NaN / inf）は 0 にリセット
+--  Currencyテーブルが壊れていても復元
+----------------------------------------------------------------
+function DataManager:clampCurrency(value, maxValue)
+	if not self:isValidNumber(value) then
+		return 0
+	end
 
-	data.Currency.Gold += amount
-	DirtyFlags[player] = true
+	value = math.floor(value)
+
+	return math.clamp(value, 0, maxValue)
 end
 
---//テスト専用公開
-DataManager._deepCopy = deepCopy
+----------------------------------------------------------------
+-- 数値チェックユーティリティ
+-- ※文字列数値の混入対策
+-- ※NaN（Not a Number）の混入対策
+-- ※無限値（math.huge / -math.huge）対策
+----------------------------------------------------------------
+function DataManager:isValidNumber(value)
+	return type(value) == "number"
+		and value == value
+		and value ~= math.huge
+		and value ~= -math.huge
+end
+
+----------------------------------------------------------------
+-- DeepCopy（安全な間接参照作成）
+-- ※参照渡し（Pass-by-reference）対策
+-- ※table.clone()によるシャローコピー状態を対策（深層が参照のままになっていることがあるので）
+----------------------------------------------------------------
+function DataManager:DeepCopy(original, visited)
+	visited = visited or {}
+
+	-- プリミティブ型はそのまま
+	if type(original) ~= "table" then
+		return original
+	end
+
+	-- Roblox Instanceはコピーしない（安全対策）
+	if typeof(original) == "Instance" then
+		warn("[DataManager] Attempted to DeepCopy Instance. Returning nil.")
+		return nil
+	end
+
+	-- 循環参照対策
+	if visited[original] then
+		return visited[original]
+	end
+
+	local copy = {}
+	visited[original] = copy
+
+	for key, value in pairs(original) do
+		local copiedKey = self:DeepCopy(key, visited)
+		local copiedValue = self:DeepCopy(value, visited)
+		copy[copiedKey] = copiedValue
+	end
+
+	-- metatableもコピー（必要な場合）
+	local mt = getmetatable(original)
+	if mt then
+		setmetatable(copy, self:DeepCopy(mt, visited))
+	end
+
+	return copy
+end
+
+--==============================================================
+-- Test Exports
+----------------------------------------------------------------
 DataManager.CURRENT_VERSION = CURRENT_VERSION
 DataManager.MAX_RETRIES = MAX_RETRIES
-
+DataManager.MAX_GOLD = MAX_GOLD
+DataManager.MAX_GEMS = MAX_GEMS
+DataManager.MAX_WINS = MAX_WINS
+DataManager.MAX_PLAYS = MAX_PLAYS
+DataManager.MIN_BEST_TIME = MIN_BEST_TIME
+DataManager.MAX_BEST_TIME = MAX_BEST_TIME
+DataManager.DefaultData = DefaultData
 
 return DataManager

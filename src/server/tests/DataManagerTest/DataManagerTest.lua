@@ -15,7 +15,7 @@
 -- ［対象］
 --  _getAsyncWithRetry(),performSave(),_startSaveLoop(),_startAutoSaveLoop(),_bindToClose()
 ----------------------------------------------------------------------------------------------------
-local DataManager = require(script.Parent.Parent.src.DataManager)
+local DataManager = require(script.Parent.Parent.Parent.DataModule.DataManager)
 local Players = game:GetService("Players")
 
 local Test = {}

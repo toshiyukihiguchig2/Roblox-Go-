@@ -3,7 +3,7 @@
 return function()
 
 	local DataManager = require(
-		game.ServerScriptService.Server.DataModule.DataManager
+		script.Parent.Parent.Parent.DataModule.DataManager
 	)
 
 	describe("_getAsyncWithRetry", function()
@@ -16,7 +16,13 @@ return function()
 				return "DATA"
 			end
 
-			local result = DataManager:_getAsyncWithRetry(mockStore, "key")
+			local dataManager = {
+				_dataStore = mockStore
+			}
+
+			setmetatable(dataManager, { __index = DataManager })
+
+			local result = dataManager:_getAsyncWithRetry("key")
 
 			expect(result).to.equal("DATA")
 
@@ -38,7 +44,13 @@ return function()
 				return "SUCCESS"
 			end
 
-			local result = DataManager:_getAsyncWithRetry(mockStore, "key")
+			local dataManager = {
+				_dataStore = mockStore
+			}
+
+			setmetatable(dataManager, { __index = DataManager })
+
+			local result = dataManager:_getAsyncWithRetry("key")
 
 			expect(result).to.equal("SUCCESS")
 			expect(callCount).to.equal(3)
@@ -56,7 +68,13 @@ return function()
 				error("always fail")
 			end
 
-			local result = DataManager:_getAsyncWithRetry(mockStore, "key")
+			local dataManager = {
+				_dataStore = mockStore
+			}
+
+			setmetatable(dataManager, { __index = DataManager })
+
+			local result = dataManager:_getAsyncWithRetry("key")
 
 			expect(result).to.equal(nil)
 			expect(callCount).to.equal(DataManager.MAX_RETRIES)

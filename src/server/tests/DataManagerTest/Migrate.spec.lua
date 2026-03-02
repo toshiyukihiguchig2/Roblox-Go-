@@ -3,7 +3,7 @@
 return function()
 
 	local DataManager = require(
-		game.ServerScriptService.Server.DataModule.DataManager
+		script.Parent.Parent.Parent.DataModule.DataManager
 	)
 
 	describe("_migrate", function()
