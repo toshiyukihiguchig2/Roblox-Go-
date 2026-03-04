@@ -1,6 +1,6 @@
 --==================================================
 -- StageGenerator (ModuleScript)
--- Easyステージの自動生成管理
+-- 難易度別ステージ自動生成管理
 --==================================================
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,23 +10,19 @@ local StageGenerator = {}
 StageGenerator.__index = StageGenerator
 
 --------------------------------------------------
--- 生成設定
---------------------------------------------------
-
-local SEGMENT_COUNT = 19
-local MIN_GAP = 4
-local MAX_GAP = 6
-
---------------------------------------------------
 -- コンストラクタ
+-- @param stageFolder      ActiveStage フォルダ
+-- @param difficultyFolder StageModels/[Difficulty] フォルダ
+-- @param config           StageConfig テーブル（SEGMENT_COUNT / MIN_GAP / MAX_GAP）
 --------------------------------------------------
 
-function StageGenerator.new(stageFolder: Folder, difficultyFolder: Folder)
+function StageGenerator.new(stageFolder: Folder, difficultyFolder: Folder, config: table)
 
 	local self = setmetatable({}, StageGenerator)
 
-	self.StageFolder = stageFolder
+	self.StageFolder  = stageFolder
 	self.ModuleFolder = difficultyFolder
+	self._config      = config or { SEGMENT_COUNT = 19, MIN_GAP = 0, MAX_GAP = 0 }
 
 	self._shuffledModules = {}
 	self._currentIndex = 1
@@ -130,11 +126,13 @@ function StageGenerator:Generate()
 
 	local currentCFrame = spawnEnd.CFrame
 
-	for i = 1, SEGMENT_COUNT do
+	local segmentCount = self._config.SEGMENT_COUNT
+
+	for i = 1, segmentCount do
 
 		local template
 
-		if i == SEGMENT_COUNT then
+		if i == segmentCount then
 			template = self.ModuleFolder:WaitForChild("Goal")
 		else
 			template = self:_getRandomModule(i == 1)
@@ -158,6 +156,23 @@ function StageGenerator:Generate()
 			end
 		end
 
+		-- スタートトリガー配置（SafeZone = 最初のセグメント）
+		-- GoalManager が Touched を検出して RunManager:StartRun を呼ぶ
+		if i == 1 then
+			local endMarker = newSegment:FindFirstChild("EndMarker")
+			if endMarker then
+				local trigger = Instance.new("Part")
+				trigger.Name        = "StartTrigger"
+				trigger.Size        = Vector3.new(30, 10, 2)
+				trigger.CFrame      = endMarker.CFrame
+				trigger.Anchored    = true
+				trigger.CanCollide  = false
+				trigger.CanTouch    = true
+				trigger.Transparency = 1
+				trigger.Parent      = newSegment
+			end
+		end
+
 		local startMarker = newSegment:FindFirstChild("StartMarker")
 		local endMarker   = newSegment:FindFirstChild("EndMarker")
 
@@ -171,7 +186,7 @@ function StageGenerator:Generate()
 		local offset =
 			startMarker.CFrame:ToObjectSpace(endMarker.CFrame)
 
-		local gap = math.random(MIN_GAP, MAX_GAP)
+		local gap = math.random(self._config.MIN_GAP, self._config.MAX_GAP)
 
 		currentCFrame =
 			currentCFrame

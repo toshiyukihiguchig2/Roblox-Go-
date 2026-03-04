@@ -1,19 +1,12 @@
 --==================================================
 -- RunManager (ModuleScript)
--- プレイヤー走行タイム + ベストタイム保存管理（安全対策版）
+-- プレイヤー走行タイム計測（BestTime管理はDataManagerが担当）
 --==================================================
 
 local Players = game:GetService("Players")
-local DataStoreService = game:GetService("DataStoreService")
 
 local RunManager = {}
 RunManager.__index = RunManager
-
---------------------------------------------------
--- DataStore設定
---------------------------------------------------
-
-local RunDataStore = DataStoreService:GetDataStore("RunBestTimes_v1")
 
 --------------------------------------------------
 -- 異常値対策設定
@@ -31,7 +24,6 @@ function RunManager.new()
 	local self = setmetatable({}, RunManager)
 
 	self._activeRuns = {} :: {[Player]: number}
-	self._bestTimes = {} :: {[Player]: number}
 
 	self:_connectPlayerEvents()
 
@@ -39,60 +31,14 @@ function RunManager.new()
 end
 
 --------------------------------------------------
--- プレイヤーイベント接続
+-- プレイヤー退出時クリーンアップ
 --------------------------------------------------
 
 function RunManager:_connectPlayerEvents()
 
-	Players.PlayerAdded:Connect(function(player)
-		self:_loadData(player)
-	end)
-
 	Players.PlayerRemoving:Connect(function(player)
-		self:_saveData(player)
 		self._activeRuns[player] = nil
-		self._bestTimes[player] = nil
 	end)
-end
-
---------------------------------------------------
--- データロード
---------------------------------------------------
-
-function RunManager:_loadData(player: Player)
-
-	local success, data = pcall(function()
-		return RunDataStore:GetAsync(player.UserId)
-	end)
-
-	if success and type(data) == "number" then
-		self._bestTimes[player] = data
-	else
-		self._bestTimes[player] = math.huge
-	end
-end
-
---------------------------------------------------
--- データ保存（UpdateAsync安全版）
---------------------------------------------------
-
-function RunManager:_saveData(player: Player)
-
-	local bestTime = self._bestTimes[player]
-	if not bestTime or bestTime == math.huge then
-		return
-	end
-
-	pcall(function()
-		RunDataStore:UpdateAsync(player.UserId, function(oldValue)
-			if type(oldValue) ~= "number" then
-				return bestTime
-			end
-			return math.min(oldValue, bestTime)
-		end)
-	end)
-
-	print("[RunManager] Data saved:", player.Name, bestTime)
 end
 
 --------------------------------------------------
@@ -110,7 +56,7 @@ function RunManager:StartRun(player: Player)
 end
 
 --------------------------------------------------
--- ラン終了
+-- ラン終了（経過時間を返す、BestTime更新はしない）
 --------------------------------------------------
 
 function RunManager:FinishRun(player: Player): number?
@@ -124,10 +70,6 @@ function RunManager:FinishRun(player: Player): number?
 	local totalTime = os.clock() - startTime
 	self._activeRuns[player] = nil
 
-	--------------------------------------------------
-	-- 異常値チェック
-	--------------------------------------------------
-
 	if totalTime < MIN_VALID_TIME then
 		warn("[RunManager] Invalid time (too fast):", player.Name, totalTime)
 		return nil
@@ -138,27 +80,7 @@ function RunManager:FinishRun(player: Player): number?
 		return nil
 	end
 
-	--------------------------------------------------
-	-- ベスト更新判定
-	--------------------------------------------------
-
-	local currentBest = self._bestTimes[player] or math.huge
-
-	if totalTime < currentBest then
-		self._bestTimes[player] = totalTime
-		self:_saveData(player)
-		print("[RunManager] New best time:", player.Name, totalTime)
-	end
-
 	return totalTime
-end
-
---------------------------------------------------
--- ベストタイム取得
---------------------------------------------------
-
-function RunManager:GetBestTime(player: Player): number?
-	return self._bestTimes[player]
 end
 
 --------------------------------------------------

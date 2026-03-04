@@ -11,7 +11,17 @@ return function()
 
 	describe("DataManager:_onPlayerAdded", function()
 
-		local mockPlayer
+		-- afterEach で復元するためにテスト前のオリジナルを保存する
+		-- ※ describe スコープで宣言することで beforeEach より先に確定する
+		local origGetAsync       = DataManager._getAsyncWithRetry
+		local origCreateDefault  = DataManager._createDefaultData
+		local origMigrate        = DataManager._migrate
+		local origSanitize       = DataManager._sanitize
+		local origApplyGameRules = DataManager._applyGameRules
+		local origSessionData    = DataManager._sessionData
+		local origDirtyFlags     = DataManager._dirtyFlags
+		local origIsLoading      = DataManager._isLoading
+		local origLastSaveTime   = DataManager._lastSaveTime
 
 		beforeEach(function()
 
@@ -41,6 +51,20 @@ return function()
 				return data
 			end
 
+		end)
+
+		-- 各テスト後にクラスレベルの書き換えを元に戻す
+		-- ※ Lua モジュールはシングルトンのため、後続テストに影響しないよう必須
+		afterEach(function()
+			DataManager._getAsyncWithRetry = origGetAsync
+			DataManager._createDefaultData = origCreateDefault
+			DataManager._migrate           = origMigrate
+			DataManager._sanitize          = origSanitize
+			DataManager._applyGameRules    = origApplyGameRules
+			DataManager._sessionData       = origSessionData
+			DataManager._dirtyFlags        = origDirtyFlags
+			DataManager._isLoading         = origIsLoading
+			DataManager._lastSaveTime      = origLastSaveTime
 		end)
 
         it("creates session data when no existing data", function()

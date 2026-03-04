@@ -8,6 +8,15 @@ return function()
 
 	describe("DataManager:_onPlayerRemoving", function()
 
+		-- afterEach で復元するためにオリジナルを保存する
+		local origPerformSave  = DataManager._performSave
+		local origSessionData  = DataManager._sessionData
+		local origDirtyFlags   = DataManager._dirtyFlags
+		local origSaveQueue    = DataManager._saveQueue
+		local origLastSaveTime = DataManager._lastSaveTime
+		local origIsSaving     = DataManager._isSaving
+		local origIsLoading    = DataManager._isLoading
+
 		local saveCalled
 		local userId = 2222
 
@@ -18,12 +27,24 @@ return function()
 			DataManager._saveQueue = {}
 			DataManager._lastSaveTime = {}
 			DataManager._isSaving = {}
+			DataManager._isLoading = {}
 
 			saveCalled = false
 
 			DataManager._performSave = function()
 				saveCalled = true
 			end
+		end)
+
+		-- 各テスト後にクラスレベルの書き換えを元に戻す
+		afterEach(function()
+			DataManager._performSave  = origPerformSave
+			DataManager._sessionData  = origSessionData
+			DataManager._dirtyFlags   = origDirtyFlags
+			DataManager._saveQueue    = origSaveQueue
+			DataManager._lastSaveTime = origLastSaveTime
+			DataManager._isSaving     = origIsSaving
+			DataManager._isLoading    = origIsLoading
 		end)
 
 		it("calls save and clears memory", function()
