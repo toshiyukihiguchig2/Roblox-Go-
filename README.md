@@ -93,6 +93,7 @@ Rojo の公式リリースからバイナリをダウンロード。　（　←
 実行環境：PowerShell
 
 cd C:\Users\ユーザー名\source\repos
+code .
 </pre>
 - Rojo 拡張機能をインストール
 - Luau Language Server をインストール
@@ -102,6 +103,12 @@ cd C:\Users\ユーザー名\source\repos
 
 ・下記コマンドを実行して Rojo を起動する
 　rojo serve　（　←　「Rojo server listening on port 34872」こんな感じのがでれば OK）
+
+（新規プロジェクトの場合）
+  「[ERROR rojo] Rojo requires a project file, but no project file was found in path　…default.project.json」のようなメッセージが出たら、
+  →新規プロジェクト用に作成したリポジトリをクローンしたディレクトリに「default.project.json」ファイルが存在しない。
+  その場合は以下のコマンドで作成する
+  rojo init
 </pre>
 5. Roblox Studio で Rojo プラグインに接続
 - Roblox Studio に Rojo プラグインをインストールする手順
