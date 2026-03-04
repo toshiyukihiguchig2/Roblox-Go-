@@ -177,6 +177,7 @@ realm = "shared"
 TestEZ = "roblox/testez@0.4.1"
 ----
 ※ name は GitHub のユーザー名に合わせて変更してOK
+※ name は 大文字のプロジェクト名は小文字に変換して設定する（Roblox-Go　→　roblox-go）
 </pre>
 - Wally を適用する
 <pre>
