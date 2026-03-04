@@ -31,6 +31,12 @@ rojo serve
 3. Roblox Studio で Rojo で同期して動作確認
 （1～3を繰り返し）
 4. GitHub に push → CI が自動テスト（結果をGithubのアクションで確認）
+※コマンド例：
+  git add -A ：ローカルからgitリポジトリへ資材をあげる
+  git commit -m "コミットメッセージ" ：あげた資材をリモートで確定するみたいな
+  git push ：コミットした資材をリポジトリで確定するみたいな
+
+  git pull ：リポジトリからローカルへ資材を落とす
 </pre>
 - 資材の配置イメージ
 <pre>
